@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 # Copyright (c) Megvii Inc. All rights reserved.
-
+import torch
 import torch.nn as nn
 
 from .yolo_head import YOLOXHead
@@ -50,3 +50,10 @@ class YOLOX(nn.Module):
     def visualize(self, x, targets, save_prefix="assign_vis_"):
         fpn_outs = self.backbone(x)
         self.head.visualize_assign_result(fpn_outs, targets, x, save_prefix)
+
+#TODO complete class
+class YOLOX_PAR(YOLOX):
+    def __init__(self, par_path, backbone=None, head=None):
+        super().__init__(backbone, head)
+        self.par = torch.load(par_path)
+
