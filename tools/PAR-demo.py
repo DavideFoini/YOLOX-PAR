@@ -11,6 +11,7 @@ import cv2
 
 import torch
 
+from PAR.models import MultiTaskHead
 from yolox.data.data_augment import ValTransform
 from yolox.data.datasets import COCO_CLASSES
 from yolox.exp import get_exp
@@ -21,7 +22,7 @@ IMAGE_EXT = [".jpg", ".jpeg", ".webp", ".bmp", ".png"]
 
 
 def make_parser():
-    parser = argparse.ArgumentParser("YOLOX Demo!")
+    parser = argparse.ArgumentParser("YOLOX-PAR Demo!")
     parser.add_argument(
         "demo", default="image", help="demo type, eg. image, video and webcam"
     )
@@ -47,6 +48,7 @@ def make_parser():
         help="please input your experiment description file",
     )
     parser.add_argument("-c", "--ckpt", default=None, type=str, help="ckpt for eval")
+    parser.add_argument("-m", "--mtlb", default=None, type=str, help="ckpt for multi-label head")
     parser.add_argument(
         "--device",
         default="cpu",
@@ -283,8 +285,17 @@ def main(exp, args):
         logger.info("loading checkpoint")
         ckpt = torch.load(ckpt_file, map_location="cpu")
         # load the model state dict
-        model.load_state_dict(ckpt["model"])
+        yolox_sd = ckpt["model"]
+        model.load_state_dict(yolox_sd)
+        # yolox_sd.update(mtlb_sd)
         logger.info("loaded checkpoint done.")
+        logger.info("loading multi-label")
+        mtlb_file = args.mtlb
+        mtlb_sd = torch.load(mtlb_file)
+        par = MultiTaskHead()
+        par.load_state_dict(mtlb_sd)
+        model.par = par
+        logger.info("loaded multi-label")
 
     if args.fuse:
         logger.info("\tFusing model...")
