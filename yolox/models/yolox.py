@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 # Copyright (c) Megvii Inc. All rights reserved.
+import numpy as np
 import torch
 import torch.nn as nn
 
@@ -59,16 +60,46 @@ class YOLOXpar(nn.Module):
     and detection results during test.
     """
 
-    def __init__(self, backbone=None, head=None, par=None):
+    def __init__(self, backbone=None, head=None, par=None, labels_names=None):
         super().__init__()
         if backbone is None:
             backbone = YOLOPAFPN()
         if head is None:
             head = YOLOXHead(80)
+        if labels_names is None:
+            labels_names = [
+                "Female",
+                "AgeOver60",
+                "Age18-60",
+                "AgeLess18",
+                "Front",
+                "Side",
+                "Back",
+                "Hat",
+                "Glasses",
+                "HandBag",
+                "ShoulderBag",
+                "Backpack",
+                "HoldObjectsInFront",
+                "ShortSleeve",
+                "LongSleeve",
+                "UpperStride",
+                "UpperLogo",
+                "UpperPlaid",
+                "UpperSplice",
+                "LowerStripe",
+                "LowerPattern",
+                "LongCoat",
+                "Trousers",
+                "Shorts",
+                "Skirt&Dress",
+                "Boots"
+            ]
 
         self.backbone = backbone
         self.head = head
         self.par = par
+        self.labels_names = labels_names
 
     def forward(self, x, targets=None):
         # fpn output content features of [dark3, dark4, dark5]
@@ -95,3 +126,16 @@ class YOLOXpar(nn.Module):
     def visualize(self, x, targets, save_prefix="assign_vis_"):
         fpn_outs = self.backbone(x)
         self.head.visualize_assign_result(fpn_outs, targets, x, save_prefix)
+
+    def par_img(self, img):
+        img = self.backbone.backbone(img)[self.backbone.backbone.out_features[0]]
+        gender, pov, sleeve, label = self.par(img)
+        gender, pov, sleeve, label = np.squeeze(gender), np.squeeze(pov), np.squeeze(sleeve), np.squeeze(label)
+        gender, pov, sleeve, label = torch.sigmoid(gender).cpu().detach().numpy(), torch.sigmoid(pov).cpu().detach().numpy(), torch.sigmoid(sleeve).cpu().detach().numpy(), torch.sigmoid(label).cpu().detach().numpy()
+        gender, pov, sleeve, label = np.round(gender), np.round(pov), np.round(sleeve), np.round(label)
+        label = np.insert(label, 0, gender)
+
+        label = np.insert(label, 4, pov)
+
+        label = np.insert(label, 13, sleeve)
+        return label

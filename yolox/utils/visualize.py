@@ -4,8 +4,12 @@
 
 import cv2
 import numpy as np
-from PAR import models
+
 __all__ = ["vis"]
+
+import torch
+
+from ..data import ValTransform
 
 
 def vis(img, boxes, scores, cls_ids, conf=0.5, class_names=None):
@@ -41,7 +45,8 @@ def vis(img, boxes, scores, cls_ids, conf=0.5, class_names=None):
 
     return img
 
-def visPAR(img, boxes, scores, cls_ids, conf=0.5, class_names=None):
+def visPAR(img, boxes, scores, cls_ids, model, conf=0.5, class_names=None):
+    preproc = ValTransform(legacy=False)
     for i in range(len(boxes)):
         box = boxes[i]
         cls_id = int(cls_ids[i])
@@ -58,6 +63,14 @@ def visPAR(img, boxes, scores, cls_ids, conf=0.5, class_names=None):
         if class_name == "person":
             cropped = img[x0:x1, y0:y1]
             #TODO here feed to yolox and extract backbone results then to PAR
+            cropped, _ = preproc(cropped, None, (416, 416))
+            cropped = torch.from_numpy(cropped).unsqueeze(0)
+            cropped = cropped.float()
+            print(cropped.size())
+            label = model.par_img(cropped)
+            label_text = ""
+            for l, v in zip(model.labels_names, label):
+                if v == 1: label_text += (l + "")
 
         color = (_COLORS[cls_id] * 255).astype(np.uint8).tolist()
         text = '{}:{:.1f}%'.format(class_name, score * 100)
@@ -76,7 +89,7 @@ def visPAR(img, boxes, scores, cls_ids, conf=0.5, class_names=None):
             -1
         )
         cv2.putText(img, text, (x0, y0 + txt_size[1]), font, 0.4, txt_color, thickness=1)
-
+        cv2.putText(img, label_text, (x0, y0 + txt_size[1]), font, 0.4, txt_color, thickness=1)
     return img
 
 
