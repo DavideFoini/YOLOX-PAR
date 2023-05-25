@@ -62,15 +62,15 @@ def visPAR(img, boxes, scores, cls_ids, model, conf=0.5, class_names=None):
 
         if class_name == "person":
             cropped = img[x0:x1, y0:y1]
-            #TODO here feed to yolox and extract backbone results then to PAR
             cropped, _ = preproc(cropped, None, (416, 416))
             cropped = torch.from_numpy(cropped).unsqueeze(0)
             cropped = cropped.float()
-            print(cropped.size())
             label = model.par_img(cropped)
             label_text = ""
             for l, v in zip(model.labels_names, label):
-                if v == 1: label_text += (l + "")
+                if v == 1: label_text += (l + "\n")
+                # else: label_text += ("Not " + l)
+                # label_text += "\n"
 
         color = (_COLORS[cls_id] * 255).astype(np.uint8).tolist()
         text = '{}:{:.1f}%'.format(class_name, score * 100)
@@ -89,7 +89,21 @@ def visPAR(img, boxes, scores, cls_ids, model, conf=0.5, class_names=None):
             -1
         )
         cv2.putText(img, text, (x0, y0 + txt_size[1]), font, 0.4, txt_color, thickness=1)
-        cv2.putText(img, label_text, (x0, y0 + txt_size[1]), font, 0.4, txt_color, thickness=1)
+
+        for i, line in enumerate(label_text.split('\n')):
+            if line != "":
+                txt_size = cv2.getTextSize(line, font, 0.4, 1)[0]
+                y = y0 + 2*txt_size[1] + i * txt_size[1]
+                cv2.rectangle(
+                    img,
+                    (x0, y + 1 - txt_size[1]),
+                    (x0 + txt_size[0] + 1, y + int(1.5 * txt_size[1]) - txt_size[1]),
+                    txt_bk_color,
+                    -1
+                )
+                cv2.putText(img, line, (x0, y), font, 0.4, txt_color, thickness=1)
+
+
     return img
 
 
