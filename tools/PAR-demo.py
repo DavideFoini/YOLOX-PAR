@@ -291,7 +291,10 @@ def main(exp, args):
         logger.info("loaded checkpoint done.")
         logger.info("loading multi-label")
         mtlb_file = args.mtlb
-        mtlb_sd = torch.load(mtlb_file)
+        if args.device == "gpu":
+            mtlb_sd = torch.load(mtlb_file)
+        else:
+            mtlb_sd = torch.load(mtlb_file, map_location=torch.device('cpu'))
         par = MultiTaskHead()
         par.load_state_dict(mtlb_sd)
         model.par = par
